@@ -11,6 +11,10 @@ const schema = new mongoose.Schema({
     pet:{
         type:mongoose.SchemaTypes.ObjectId,
         ref:'Pets'
+    },
+    adoptionDate: {
+        type: Date,
+        required: true
     }
 })
 

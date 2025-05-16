@@ -1,0 +1,82 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Backend3 API",
+        "version": "1.0.0",
+        "description": "Documentaci\u00f3n de la API de Backend3"
+    },
+    "servers": [{ "url": "http://localhost:8080" }],
+    "paths": {
+        "/api/users": {
+            "get": {
+                "summary": "Obtener todos los usuarios",
+                "responses": {
+                    "200": {
+                        "description": "Lista de usuarios"
+                    }
+                }
+            },
+            "post": {
+                "summary": "Registrar un nuevo usuario",
+                "responses": {
+                    "201": {
+                        "description": "Usuario creado"
+                    }
+                }
+            }
+        },
+        "/api/pets": {
+            "get": {
+                "summary": "Obtener todas las mascotas",
+                "responses": {
+                    "200": {
+                        "description": "Lista de mascotas"
+                    }
+                }
+            }
+        },
+        "/api/adoptions": {
+            "get": {
+                "summary": "Obtener todas las adopciones",
+                "responses": {
+                    "200": {
+                        "description": "Lista de adopciones"
+                    }
+                }
+            }
+        },
+        "/api/sessions/login": {
+            "post": {
+                "summary": "Iniciar sesi\u00f3n",
+                "responses": {
+                    "200": {
+                        "description": "Login exitoso"
+                    },
+                    "401": {
+                        "description": "Credenciales inv\u00e1lidas"
+                    }
+                }
+            }
+        },
+        "/api/sessions/register": {
+            "post": {
+                "summary": "Registrar un nuevo usuario",
+                "responses": {
+                    "201": {
+                        "description": "Usuario registrado"
+                    }
+                }
+            }
+        },
+        "/api/mocks/mockingpets": {
+            "get": {
+                "summary": "Obtener datos de mascotas mockeadas",
+                "responses": {
+                    "200": {
+                        "description": "Datos de prueba de mascotas"
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,69 +1,101 @@
-import { usersService } from "../services/index.js";
-import { createHash, passwordValidation } from "../utils/index.js";
 import jwt from 'jsonwebtoken';
-import UserDTO from '../dto/User.dto.js';
+import bcrypt from 'bcryptjs';
+import UserModel from '../dao/models/User.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const jwtSecret = process.env.JWT_SECRET;
+const jwtExpiration = process.env.JWT_EXPIRATION || '1h';
+
+if (!jwtSecret) {
+    throw new Error('❌ JWT_SECRET is not defined in the .env file!');
+}
 
 const register = async (req, res) => {
-    try {
-        const { first_name, last_name, email, password } = req.body;
-        if (!first_name || !last_name || !email || !password) return res.status(400).send({ status: "error", error: "Incomplete values" });
-        const exists = await usersService.getUserByEmail(email);
-        if (exists) return res.status(400).send({ status: "error", error: "User already exists" });
-        const hashedPassword = await createHash(password);
-        const user = {
-            first_name,
-            last_name,
-            email,
-            password: hashedPassword
-        }
-        let result = await usersService.create(user);
-        console.log(result);
-        res.send({ status: "success", payload: result._id });
-    } catch (error) {
+    const { email, password, firstName, lastName } = req.body;
 
+    try {
+        const existingUser = await UserModel.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({ status: 'error', message: 'Usuario ya existe' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = await UserModel.create({
+            email,
+            password: hashedPassword,
+            first_name: firstName,
+            last_name: lastName,
+        });
+
+        res.json({ status: 'success', message: 'Usuario registrado', user: newUser });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Error en el registro', details: error.message });
     }
-}
+};
 
 const login = async (req, res) => {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).send({ status: "error", error: "Incomplete values" });
-    const user = await usersService.getUserByEmail(email);
-    if(!user) return res.status(404).send({status:"error",error:"User doesn't exist"});
-    const isValidPassword = await passwordValidation(user,password);
-    if(!isValidPassword) return res.status(400).send({status:"error",error:"Incorrect password"});
-    const userDto = UserDTO.getUserTokenFrom(user);
-    const token = jwt.sign(userDto,'tokenSecretJWT',{expiresIn:"1h"});
-    res.cookie('coderCookie',token,{maxAge:3600000}).send({status:"success",message:"Logged in"})
-}
 
-const current = async(req,res) =>{
-    const cookie = req.cookies['coderCookie']
-    const user = jwt.verify(cookie,'tokenSecretJWT');
-    if(user)
-        return res.send({status:"success",payload:user})
-}
+    try {
+        const user = await UserModel.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ status: 'error', message: 'Usuario no encontrado' });
+        }
 
-const unprotectedLogin  = async(req,res) =>{
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).send({ status: "error", error: "Incomplete values" });
-    const user = await usersService.getUserByEmail(email);
-    if(!user) return res.status(404).send({status:"error",error:"User doesn't exist"});
-    const isValidPassword = await passwordValidation(user,password);
-    if(!isValidPassword) return res.status(400).send({status:"error",error:"Incorrect password"});
-    const token = jwt.sign(user,'tokenSecretJWT',{expiresIn:"1h"});
-    res.cookie('unprotectedCookie',token,{maxAge:3600000}).send({status:"success",message:"Unprotected Logged in"})
-}
-const unprotectedCurrent = async(req,res)=>{
-    const cookie = req.cookies['unprotectedCookie']
-    const user = jwt.verify(cookie,'tokenSecretJWT');
-    if(user)
-        return res.send({status:"success",payload:user})
-}
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ status: 'error', message: 'Contraseña incorrecta' });
+        }
+
+        const token = jwt.sign(
+            { id: user._id, role: user.role },
+            jwtSecret,
+            { expiresIn: jwtExpiration }
+        );
+
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: false, // Solo desarrollo
+            maxAge: 1000 * 60 * 60, // 1 hora
+        });
+
+        res.json({ status: 'success', message: 'Login exitoso', token });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: 'Error en el login', details: error.message });
+    }
+};
+
+const current = (req, res) => {
+    // Simula la recuperación de usuario actual desde el token
+    const token = req.cookies.token;
+    if (!token) {
+        return res.status(401).json({ status: 'error', message: 'No hay sesión activa' });
+    }
+
+    try {
+        const user = jwt.verify(token, jwtSecret);
+        res.json({ status: 'success', user });
+    } catch (error) {
+        res.status(403).json({ status: 'error', message: 'Token inválido o expirado' });
+    }
+};
+
+// Métodos de prueba sin protección de token
+const unprotectedLogin = (req, res) => {
+    res.json({ status: 'success', message: 'Login sin protección de token (modo prueba)' });
+};
+
+const unprotectedCurrent = (req, res) => {
+    res.json({ status: 'success', message: 'Ruta sin protección de token (modo prueba)' });
+};
+
+// ✅ Export Default para que funcione tu importación como la tienes
 export default {
-    current,
-    login,
     register,
+    login,
     current,
     unprotectedLogin,
-    unprotectedCurrent
-}
+    unprotectedCurrent,
+};

@@ -5,6 +5,21 @@ const getAllUsers = async(req,res)=>{
     res.send({status:"success",payload:users})
 }
 
+const createUser = async (req, res) => {
+    const { first_name, last_name, email, password, role } = req.body;
+
+    if (!first_name || !last_name || !email || !password || !role) {
+        return res.status(400).send({ status: "error", error: "Incomplete user data" });
+    }
+
+    try {
+        const newUser = await usersService.create({ first_name, last_name, email, password, role });
+        res.status(201).send({ status: "success", payload: newUser });
+    } catch (err) {
+        res.status(500).send({ status: "error", error: "Error creating user", details: err.message });
+    }
+};
+
 const getUser = async(req,res)=> {
     const userId = req.params.uid;
     const user = await usersService.getUserById(userId);
@@ -31,5 +46,6 @@ export default {
     deleteUser,
     getAllUsers,
     getUser,
-    updateUser
+    updateUser,
+    createUser
 }
